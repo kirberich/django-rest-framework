@@ -9,6 +9,10 @@ from django.db import models
 from django.http import Http404
 from django.http.response import HttpResponseBase
 from django.utils import six
+from django.utils.cache import (
+    cc_delim_re,
+    patch_vary_headers,
+)
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
@@ -413,6 +417,11 @@ class APIView(View):
             response.accepted_renderer = request.accepted_renderer
             response.accepted_media_type = request.accepted_media_type
             response.renderer_context = self.get_renderer_context()
+
+        if 'Vary' in self.headers:
+            # Add new vary headers to existing ones instead of overwriting.
+            new_vary_headers = cc_delim_re.split(self.headers.pop('Vary'))
+            patch_vary_headers(response, new_vary_headers)
 
         for key, value in self.headers.items():
             response[key] = value
